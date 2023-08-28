@@ -14,7 +14,7 @@ module.exports = async (req, res, next) => {
       return res.status(403).json({ message: "Access forbidden" });
     }
 
-    req.user = accessed;
+    req.admin = accessed;
     next();
   } catch (error) {
     return res

@@ -16,7 +16,7 @@ exports.getAllTasks = async (req, res) => {
 // each users All task
 exports.singleUserTask = async (req, res) => {
   const userId = req.user.userId;
-  console.log(req.user, "Entering getAll task route");
+  console.log("Entering getAll task route");
   try {
     const tasks = await TaskModel.find({ assignedTo: userId }).populate(
       "assignedTo",
@@ -31,17 +31,62 @@ exports.singleUserTask = async (req, res) => {
   }
 };
 
+exports.singleTask = async (req, res) => {
+  const taskId = req.params.taskId;
+  console.log("Entering single task route");
+
+  try {
+    const task = await TaskModel.findById(taskId).populate(
+      "assignedTo",
+      "userName"
+    );
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.status(200).json(task);
+  } catch (error) {
+    console.error("An error occurred:", error.message);
+    res
+      .status(500)
+      .json({ message: "An error occurred", error: error.message });
+  }
+};
+
+exports.singleTaskHome = async (req, res) => {
+  const taskId = req.params.taskId;
+  console.log("Entering single task home route");
+
+  try {
+    const task = await TaskModel.findById(taskId).populate(
+      "assignedTo",
+      "userName"
+    );
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.status(200).json(task);
+  } catch (error) {
+    console.error("An error occurred:", error.message);
+    res
+      .status(500)
+      .json({ message: "An error occurred", error: error.message });
+  }
+};
 exports.createTask = async (req, res) => {
   try {
     const userId = req.userId;
-    const { title, description, priority, assignedTo } = req.body;
-    console.log(req.body);
+    const { title, description, date, priority, status, userName } = req.body;
     const newTask = new TaskModel({
       title,
       description,
-      dueDate: Date.now(),
+      dueDate: new Date(date),
       priority,
-      assignedTo,
+      status,
+      assignedTo: userName,
     });
 
     await newTask.save();
@@ -54,16 +99,53 @@ exports.createTask = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   console.log("Enter update task route");
+  console.log(req.body, "req.body");
+  const updateData = {
+    title: req.body.title,
+    description: req.body.description,
+    dueDate: new Date(req.body.date),
+    priority: req.body.priority,
+    status: req.body.status,
+    assignedTo: req.body.userName,
+  };
+
+  try {
+    const task = await TaskModel.findByIdAndUpdate(
+      req.params.taskId,
+      updateData,
+      {
+        new: true,
+      }
+    );
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    res.status(200).json({ message: "Task updated successfully" });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "An error occurred", error: error.message });
+  }
+};
+
+exports.updateTaskStatus = async (req, res) => {
+  console.log("Enter updateTaskStatus route");
   try {
     const taskId = req.params.taskId;
-    console.log(req.body.status);
+    const newStatus = req.body.status;
 
-    const task = await TaskModel.findOneAndUpdate({
-      _id: taskId,
-      status: req.body.status,
-    });
+    const task = await TaskModel.findOne({ _id: taskId });
 
-    res.status(200).json({ message: "Task Updated successfully", task });
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    const updatedTask = await TaskModel.findOneAndUpdate(
+      { _id: taskId },
+      { $set: { status: newStatus } },
+      { new: true }
+    );
+    console.log(updatedTask, "task");
+    res.status(200).json({ message: "Task Updated successfully" });
   } catch (error) {
     res.status(500).json({ message: "An error occurred", error });
   }
